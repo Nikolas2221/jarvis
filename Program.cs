@@ -19,7 +19,9 @@ internal static class SpeechSynthesizerFactory
     {
         if (settings.VoiceStyle.Equals("jarvis", StringComparison.OrdinalIgnoreCase))
         {
-            return new GoogleTranslateTtsSynthesizer();
+            // Нейронный мужской русский голос Microsoft Edge (Dmitry Neural) —
+            // звучит близко к актёрской озвучке, никаких локальных серверов не нужно.
+            return new EdgeTtsSynthesizer();
         }
 
         try
@@ -37,6 +39,6 @@ internal static class SpeechSynthesizerFactory
             Console.WriteLine($"[TTS] Windows TTS недоступен: {ex.Message}");
         }
 
-        return new GoogleTranslateTtsSynthesizer();
+        return new EdgeTtsSynthesizer();
     }
 }
