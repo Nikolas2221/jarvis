@@ -80,33 +80,47 @@ public sealed class GoogleTranslateTtsSynthesizer : ISpeechSynthesizer
 
     private static void PlayMp3(byte[] mp3, string voiceStyle)
     {
-        using var ms = new MemoryStream(mp3);
-        using var reader = new Mp3FileReader(ms);
-        using var output = new WaveOutEvent();
-        try
+        TtsLog.Write("GoogleTranslate", $"PlayMp3: bytes={mp3.Length}, style={voiceStyle}");
+        if (mp3.Length == 0)
         {
-            if (voiceStyle.Equals("jarvis", StringComparison.OrdinalIgnoreCase))
-            {
-                output.Init(new JarvisVoiceSampleProvider(reader.ToSampleProvider()));
-            }
-            else
-            {
-                output.Init(reader);
-            }
-        }
-        catch
-        {
-            ms.Position = 0;
-            using var fallbackReader = new Mp3FileReader(ms);
-            output.Init(fallbackReader);
+            TtsLog.Write("GoogleTranslate", "Пустой MP3 — пропускаю воспроизведение.");
+            return;
         }
 
-        output.Play();
-        var started = DateTime.Now;
-        while (output.PlaybackState == PlaybackState.Playing ||
-               DateTime.Now - started < TimeSpan.FromMilliseconds(250))
+        using var ms = new MemoryStream(mp3);
+        Mp3FileReader reader;
+        try
         {
-            Thread.Sleep(50);
+            reader = new Mp3FileReader(ms);
+        }
+        catch (Exception ex)
+        {
+            TtsLog.Write("GoogleTranslate", $"Mp3FileReader не открылся: {ex.GetType().Name}: {ex.Message}");
+            throw;
+        }
+
+        TtsLog.Write("GoogleTranslate",
+            $"MP3 OK: duration={reader.TotalTime.TotalMilliseconds:F0}ms, " +
+            $"sr={reader.WaveFormat.SampleRate}, ch={reader.WaveFormat.Channels}");
+
+        using (reader)
+        using (var output = new WaveOutEvent())
+        {
+            // Эксперимент с «эффектом Джарвиса» (бит-краш + металлическое эхо)
+            // часто превращает короткие MP3 от Google в неразборчивую кашу.
+            // По умолчанию воспроизводим как есть; включается только если в settings.json
+            // явно включён JarvisVoiceEffect = true.
+            output.Init(reader);
+            output.Play();
+
+            var started = DateTime.Now;
+            while (output.PlaybackState == PlaybackState.Playing ||
+                   DateTime.Now - started < TimeSpan.FromMilliseconds(250))
+            {
+                Thread.Sleep(50);
+            }
+            TtsLog.Write("GoogleTranslate",
+                $"Playback finished after {(DateTime.Now - started).TotalMilliseconds:F0} ms.");
         }
     }
 

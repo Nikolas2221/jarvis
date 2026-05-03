@@ -52,17 +52,21 @@ public sealed class EdgeTtsSynthesizer : ISpeechSynthesizer
         var url = "wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1" +
                   $"?TrustedClientToken={TrustedToken}" +
                   $"&Sec-MS-GEC={GenerateSecMsGec()}" +
-                  "&Sec-MS-GEC-Version=1-130.0.2849.68" +
+                  "&Sec-MS-GEC-Version=1-131.0.2903.86" +
                   $"&ConnectionId={connectionId}";
 
         using var ws = new ClientWebSocket();
+        ws.Options.SetRequestHeader("Pragma", "no-cache");
+        ws.Options.SetRequestHeader("Cache-Control", "no-cache");
+        ws.Options.SetRequestHeader("Accept-Language", "en-US,en;q=0.9");
         ws.Options.SetRequestHeader("Origin", "chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold");
         ws.Options.SetRequestHeader(
             "User-Agent",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-            "(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0");
+            "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0");
 
-        using var connectCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        // Короткий таймаут — если эндпоинт блокирован/не отвечает, быстрее идём в fallback.
+        using var connectCts = new CancellationTokenSource(TimeSpan.FromSeconds(4));
         await ws.ConnectAsync(new Uri(url), connectCts.Token);
 
         var configMsg =
