@@ -21,6 +21,7 @@ internal sealed class InstallerForm : Form
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromMinutes(5) };
 
     private readonly Label _status = new();
+    private readonly Label _version = new();
     private readonly TextBox _installPath = new();
     private readonly Button _browseButton = new();
     private readonly Button _installButton = new();
@@ -92,11 +93,16 @@ internal sealed class InstallerForm : Form
 
         _status.Text = "Готов к установке.";
         _status.Left = 24;
-        _status.Top = 224;
+        _status.Top = 214;
         _status.Width = 490;
 
+        _version.Text = "Версия: проверка после запуска установки.";
+        _version.Left = 24;
+        _version.Top = 236;
+        _version.Width = 490;
+
         _progress.Left = 24;
-        _progress.Top = 248;
+        _progress.Top = 258;
         _progress.Width = 490;
         _progress.Height = 20;
         _progress.Style = ProgressBarStyle.Blocks;
@@ -128,6 +134,7 @@ internal sealed class InstallerForm : Form
             _startMenuShortcut,
             _launchAfterInstall,
             _status,
+            _version,
             _progress,
             _installButton,
             _uninstallButton,
@@ -171,6 +178,23 @@ internal sealed class InstallerForm : Form
 
             SetStatus("Получаю manifest обновления...", marquee: true);
             var manifest = await DownloadManifestAsync();
+            var installedVersion = GetInstalledVersion(Path.Combine(installDir, "Jarvis.exe"));
+            _version.Text = $"Установлена: {installedVersion}; доступна: {manifest.Version}";
+
+            if (installedVersion == manifest.Version)
+            {
+                var reinstall = MessageBox.Show(
+                    "Установлена актуальная версия. Переустановить Jarvis Alpha?",
+                    "Jarvis Setup",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+                if (reinstall != DialogResult.Yes)
+                {
+                    SetStatus("Установка отменена: версия актуальна.", marquee: false, value: 100);
+                    SetInstalling(false);
+                    return;
+                }
+            }
 
             var zipPath = Path.Combine(tempRoot, "Jarvis.zip");
             SetStatus($"Скачиваю Jarvis {manifest.Version}...", marquee: true);
@@ -284,6 +308,16 @@ internal sealed class InstallerForm : Form
         var json = await Http.GetStringAsync(ManifestUrl);
         return JsonSerializer.Deserialize<UpdateManifest>(json, new JsonSerializerOptions(JsonSerializerDefaults.Web))
                ?? throw new InvalidOperationException("Не удалось прочитать update-manifest.json.");
+    }
+
+    private static string GetInstalledVersion(string exePath)
+    {
+        if (!File.Exists(exePath)) return "не установлена";
+
+        var info = FileVersionInfo.GetVersionInfo(exePath);
+        return string.IsNullOrWhiteSpace(info.ProductVersion)
+            ? "неизвестно"
+            : info.ProductVersion;
     }
 
     private void Uninstall()

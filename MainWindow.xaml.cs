@@ -328,7 +328,7 @@ public partial class MainWindow : Window
 
             if (answer != MessageBoxResult.Yes) return;
 
-            await updater.DownloadAndInstallAsync(result.Manifest, message => AddLog("UPDATE", message), CancellationToken.None);
+            await updater.DownloadAndInstallAsync(result.Manifest, progress => AddLog("UPDATE", progress.DisplayText), CancellationToken.None);
             System.Windows.Application.Current.Shutdown();
         }
         catch (Exception ex)

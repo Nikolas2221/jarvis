@@ -49,7 +49,7 @@ public sealed class GoogleTranslateTtsSynthesizer : ISpeechSynthesizer
     private static async Task<byte[]> SynthesizeAsync(string text)
     {
         var url = "https://translate.google.com/translate_tts" +
-                  "?ie=UTF-8&client=tw-ob&tl=ru&q=" +
+                  "?ie=UTF-8&client=tw-ob&tl=ru&ttsspeed=0.85&q=" +
                   Uri.EscapeDataString(text);
 
         return await Http.GetByteArrayAsync(url);
@@ -132,12 +132,13 @@ internal sealed class JarvisVoiceSampleProvider : ISampleProvider
         for (var i = 0; i < read; i++)
         {
             var sample = buffer[offset + i];
-            var metallic = 0.92f + 0.08f * (float)Math.Sin(_phase);
-            _phase += 2.0 * Math.PI * 42.0 / WaveFormat.SampleRate;
+            var metallic = 0.82f + 0.18f * (float)Math.Sin(_phase);
+            _phase += 2.0 * Math.PI * 55.0 / WaveFormat.SampleRate;
             if (_phase > Math.PI * 2) _phase -= Math.PI * 2;
 
-            var echo = _delay[_delayIndex] * 0.18f;
-            var processed = Math.Clamp(sample * metallic + echo, -1f, 1f);
+            var echo = _delay[_delayIndex] * 0.28f;
+            var crushed = (float)Math.Round(sample * 28f) / 28f;
+            var processed = Math.Clamp(crushed * metallic + echo, -1f, 1f);
             _delay[_delayIndex] = processed;
             _delayIndex = (_delayIndex + 1) % _delay.Length;
 

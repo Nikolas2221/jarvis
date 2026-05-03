@@ -4,6 +4,12 @@ internal static class SpeechSynthesizerFactory
 {
     public static ISpeechSynthesizer Create()
     {
+        var settings = AppSettings.Load();
+        if (settings.VoiceStyle.Equals("jarvis", StringComparison.OrdinalIgnoreCase))
+        {
+            return new GoogleTranslateTtsSynthesizer();
+        }
+
         try
         {
             var windowsTts = new WindowsSpeechSynthesizer();

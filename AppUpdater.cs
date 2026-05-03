@@ -35,18 +35,30 @@ public sealed class AppUpdater
         return UpdateCheckResult.Available(current.ToString(), manifest);
     }
 
-    public async Task DownloadAndInstallAsync(UpdateManifest manifest, Action<string> log, CancellationToken ct)
+    public async Task DownloadAndInstallAsync(UpdateManifest manifest, Action<UpdateProgress> progress, CancellationToken ct)
     {
         var appDir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
         var tempRoot = Path.Combine(Path.GetTempPath(), "JarvisUpdate", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempRoot);
 
         var zipPath = Path.Combine(tempRoot, "jarvis-update.zip");
-        log("Скачиваю обновление.");
-        await using (var stream = await Http.GetStreamAsync(manifest.PackageUrl, ct))
+        progress(new UpdateProgress("Скачиваю обновление..."));
+        using var response = await Http.GetAsync(manifest.PackageUrl, HttpCompletionOption.ResponseHeadersRead, ct);
+        response.EnsureSuccessStatusCode();
+        var totalBytes = response.Content.Headers.ContentLength;
+
+        await using (var stream = await response.Content.ReadAsStreamAsync(ct))
         await using (var file = File.Create(zipPath))
         {
-            await stream.CopyToAsync(file, ct);
+            var buffer = new byte[128 * 1024];
+            long downloaded = 0;
+            int read;
+            while ((read = await stream.ReadAsync(buffer, ct)) > 0)
+            {
+                await file.WriteAsync(buffer.AsMemory(0, read), ct);
+                downloaded += read;
+                progress(new UpdateProgress("Скачиваю обновление...", downloaded, totalBytes));
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(manifest.Sha256))
@@ -65,7 +77,7 @@ public sealed class AppUpdater
         var exePath = Environment.ProcessPath ?? Path.Combine(appDir, "Jarvis.exe");
         File.WriteAllText(scriptPath, BuildUpdateScript(appDir, extractDir, exePath));
 
-        log("Перезапускаю Джарвиса для установки обновления.");
+        progress(new UpdateProgress("Перезапускаю Джарвиса для установки обновления."));
         Process.Start(new ProcessStartInfo
         {
             FileName = "powershell.exe",
