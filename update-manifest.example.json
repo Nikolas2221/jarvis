@@ -1,6 +1,6 @@
 {
   "version": "0.1.0",
-  "packageUrl": "https://example.com/jarvis/Jarvis-0.1.0.zip",
+  "packageUrl": "https://github.com/Nikolas2221/jarvis/releases/download/v0.1.0/Jarvis-0.1.0-win-x64.zip",
   "sha256": "",
   "notes": "Initial Jarvis Alpha release."
 }

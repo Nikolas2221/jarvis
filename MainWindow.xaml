@@ -69,6 +69,14 @@
                                 BorderBrush="#3B5A91"
                                 Foreground="#DDEEFF"
                                 Margin="0,0,8,0"/>
+                        <Button Content="Update"
+                                Width="82"
+                                Height="32"
+                                Click="UpdateButton_Click"
+                                Background="#182238"
+                                BorderBrush="#3B5A91"
+                                Foreground="#DDEEFF"
+                                Margin="0,0,8,0"/>
                         <Button Content="Скрыть"
                                 Width="82"
                                 Height="32"

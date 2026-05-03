@@ -19,4 +19,9 @@
     <PackageReference Include="System.Speech" Version="9.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="installer\**\*.cs" />
+    <None Remove="installer\**\*" />
+  </ItemGroup>
+
 </Project>

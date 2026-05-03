@@ -1,0 +1,84 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Resolve version
+        shell: pwsh
+        run: |
+          $version = "${env:GITHUB_REF_NAME}".TrimStart("v")
+          "VERSION=$version" >> $env:GITHUB_ENV
+          "TAG=${env:GITHUB_REF_NAME}" >> $env:GITHUB_ENV
+
+      - name: Publish Jarvis
+        shell: pwsh
+        run: |
+          dotnet publish Jarvis.csproj `
+            -c Release `
+            -r win-x64 `
+            --configfile NuGet.Config `
+            --self-contained true `
+            -p:Version=$env:VERSION `
+            -p:AssemblyVersion="$env:VERSION.0" `
+            -p:FileVersion="$env:VERSION.0" `
+            -o release/Jarvis
+
+      - name: Add update settings
+        shell: pwsh
+        run: |
+          @{
+            manifestUrl = "https://github.com/Nikolas2221/jarvis/releases/latest/download/update-manifest.json"
+          } | ConvertTo-Json | Set-Content -Encoding UTF8 release/Jarvis/update-settings.json
+
+      - name: Pack Jarvis
+        shell: pwsh
+        run: |
+          Compress-Archive -Path release/Jarvis/* -DestinationPath "release/Jarvis-$env:VERSION-win-x64.zip" -Force
+          $hash = (Get-FileHash "release/Jarvis-$env:VERSION-win-x64.zip" -Algorithm SHA256).Hash
+          @{
+            version = $env:VERSION
+            packageUrl = "https://github.com/Nikolas2221/jarvis/releases/download/$env:TAG/Jarvis-$env:VERSION-win-x64.zip"
+            sha256 = $hash
+            notes = "Jarvis Alpha $env:VERSION"
+          } | ConvertTo-Json | Set-Content -Encoding UTF8 release/update-manifest.json
+
+      - name: Publish Installer
+        shell: pwsh
+        run: |
+          dotnet publish installer/JarvisInstaller.csproj `
+            -c Release `
+            -r win-x64 `
+            --configfile NuGet.Config `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:Version=$env:VERSION `
+            -o release/Installer
+          Copy-Item release/Installer/JarvisInstaller.exe "release/JarvisInstaller-$env:VERSION.exe"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Jarvis ${{ env.VERSION }}"
+          body: "Jarvis Alpha release ${{ env.VERSION }}"
+          files: |
+            release/Jarvis-${{ env.VERSION }}-win-x64.zip
+            release/JarvisInstaller-${{ env.VERSION }}.exe
+            release/update-manifest.json

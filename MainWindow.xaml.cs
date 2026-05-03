@@ -239,5 +239,49 @@ public partial class MainWindow : Window
         AddLogCore("UI", _fullscreen ? "Полноэкранный режим включён." : "Полноэкранный режим выключен.");
     }
 
+    private async void UpdateButton_Click(object sender, RoutedEventArgs e)
+    {
+        await CheckUpdatesAsync(interactive: true);
+    }
+
+    private async Task CheckUpdatesAsync(bool interactive)
+    {
+        try
+        {
+            var updater = new AppUpdater();
+            AddLogCore("UPDATE", "Проверяю обновления.");
+            var result = await updater.CheckAsync(CancellationToken.None);
+            AddLogCore("UPDATE", result.Message);
+
+            if (!result.HasUpdate || result.Manifest == null)
+            {
+                if (interactive)
+                {
+                    MessageBox.Show(result.Message, "Jarvis Update", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                return;
+            }
+
+            var answer = MessageBox.Show(
+                $"{result.Message}\n\n{result.Manifest.Notes}\n\nУстановить обновление сейчас?",
+                "Jarvis Update",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (answer != MessageBoxResult.Yes) return;
+
+            await updater.DownloadAndInstallAsync(result.Manifest, message => AddLog("UPDATE", message), CancellationToken.None);
+            Application.Current.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            AddLogCore("UPDATE", ex.Message);
+            if (interactive)
+            {
+                MessageBox.Show(ex.Message, "Jarvis Update", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+    }
+
     private void StopButton_Click(object sender, RoutedEventArgs e) => Close();
 }
