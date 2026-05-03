@@ -81,7 +81,7 @@ public sealed class AppUpdater
         Process.Start(new ProcessStartInfo
         {
             FileName = "powershell.exe",
-            Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\" -Pid {Environment.ProcessId}",
+            Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\" -ProcessId {Environment.ProcessId}",
             UseShellExecute = true,
             WindowStyle = ProcessWindowStyle.Hidden
         });
@@ -89,18 +89,33 @@ public sealed class AppUpdater
 
     private static string BuildUpdateScript(string appDir, string extractDir, string exePath) =>
         $$"""
-        param([int]$Pid)
+        param([int]$ProcessId)
         try {
-          Wait-Process -Id $Pid -Timeout 30 -ErrorAction SilentlyContinue
+          if ($ProcessId -gt 0) {
+            Wait-Process -Id $ProcessId -Timeout 30 -ErrorAction SilentlyContinue
+          }
         } catch {}
+
+        # Защитное убийство Jarvis на случай зависания, чтобы освободить файлы.
+        Get-Process -Name 'Jarvis' -ErrorAction SilentlyContinue | ForEach-Object {
+          try { $_.Kill() } catch {}
+        }
+        Start-Sleep -Milliseconds 600
 
         $source = '{{extractDir}}'
         $target = '{{appDir}}'
+        $logPath = Join-Path $env:TEMP 'JarvisUpdate.log'
+        "[$(Get-Date -Format o)] start copy from $source to $target" | Out-File -FilePath $logPath -Append -Encoding UTF8
 
         Get-ChildItem -Path $source -Force | ForEach-Object {
-          Copy-Item -LiteralPath $_.FullName -Destination $target -Recurse -Force
+          try {
+            Copy-Item -LiteralPath $_.FullName -Destination $target -Recurse -Force -ErrorAction Stop
+          } catch {
+            "[$(Get-Date -Format o)] copy failed for $($_.FullName): $($_.Exception.Message)" | Out-File -FilePath $logPath -Append -Encoding UTF8
+          }
         }
 
+        "[$(Get-Date -Format o)] starting {{exePath}}" | Out-File -FilePath $logPath -Append -Encoding UTF8
         Start-Process -FilePath '{{exePath}}'
         """;
 
