@@ -78,16 +78,28 @@ public sealed class GoogleTranslateTtsSynthesizer : ISpeechSynthesizer
         using var ms = new MemoryStream(mp3);
         using var reader = new Mp3FileReader(ms);
         using var output = new WaveOutEvent();
-        if (voiceStyle.Equals("jarvis", StringComparison.OrdinalIgnoreCase))
+        try
         {
-            output.Init(new JarvisVoiceSampleProvider(reader.ToSampleProvider()));
+            if (voiceStyle.Equals("jarvis", StringComparison.OrdinalIgnoreCase))
+            {
+                output.Init(new JarvisVoiceSampleProvider(reader.ToSampleProvider()));
+            }
+            else
+            {
+                output.Init(reader);
+            }
         }
-        else
+        catch
         {
-            output.Init(reader);
+            ms.Position = 0;
+            using var fallbackReader = new Mp3FileReader(ms);
+            output.Init(fallbackReader);
         }
+
         output.Play();
-        while (output.PlaybackState == PlaybackState.Playing)
+        var started = DateTime.Now;
+        while (output.PlaybackState == PlaybackState.Playing ||
+               DateTime.Now - started < TimeSpan.FromMilliseconds(250))
         {
             Thread.Sleep(50);
         }
