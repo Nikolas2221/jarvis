@@ -16,11 +16,20 @@ xtts/speaker.wav
 
 For example, you can use `jarvis_sample1.wav` from the Python Jarvis project.
 
-Install Python dependencies manually:
+XTTS requires Python 3.10 or 3.11. It does not install on Python 3.12+.
+
+Recommended setup on Windows:
 
 ```powershell
 cd xtts
-python -m venv .venv
+.\install_xtts.ps1
+```
+
+Manual setup:
+
+```powershell
+cd xtts
+py -3.11 -m venv .venv
 .\.venv\Scripts\activate
 pip install -r requirements.txt
 ```
@@ -28,7 +37,7 @@ pip install -r requirements.txt
 Run the server:
 
 ```powershell
-python tts_server.py
+.\.venv\Scripts\python.exe tts_server.py
 ```
 
 Default URL:
