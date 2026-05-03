@@ -49,11 +49,14 @@ public sealed class EdgeTtsSynthesizer : ISpeechSynthesizer
     private static async Task<byte[]> SynthesizeAsync(string text)
     {
         var connectionId = Guid.NewGuid().ToString("N").ToUpperInvariant();
+        var sec = GenerateSecMsGec();
         var url = "wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1" +
                   $"?TrustedClientToken={TrustedToken}" +
-                  $"&Sec-MS-GEC={GenerateSecMsGec()}" +
+                  $"&Sec-MS-GEC={sec}" +
                   "&Sec-MS-GEC-Version=1-131.0.2903.86" +
                   $"&ConnectionId={connectionId}";
+
+        TtsLog.Write("EdgeTTS", $"connect: sec={sec[..16]}..., conn={connectionId[..16]}...");
 
         using var ws = new ClientWebSocket();
         ws.Options.SetRequestHeader("Pragma", "no-cache");
@@ -147,9 +150,20 @@ public sealed class EdgeTtsSynthesizer : ISpeechSynthesizer
 
     private static string GenerateSecMsGec()
     {
-        var fileTime = DateTime.UtcNow.ToFileTimeUtc();
-        fileTime -= fileTime % 3_000_000_000L;
-        var input = $"{fileTime}{TrustedToken}";
+        // Алгоритм должен битово совпадать с python edge-tts:
+        //   ticks_seconds = unix_seconds + WIN_EPOCH (= 11644473600, секунды между 1601-01-01 и 1970-01-01)
+        //   ticks_seconds -= ticks_seconds % 300            # round down to 5 min
+        //   ticks *= 1e7                                    # float умножение с потерей точности
+        //   sha256(f"{ticks:.0f}{TRUSTED_TOKEN}")
+        // Точная integer-математика DateTime.ToFileTimeUtc даёт ДРУГОЙ хэш (чему рад только сервер 403).
+        const long WinEpochSeconds = 11644473600L;
+        long unixSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        long roundedSeconds = (unixSeconds + WinEpochSeconds) - ((unixSeconds + WinEpochSeconds) % 300L);
+
+        double ticksFloat = (double)roundedSeconds * 1e7;
+        string ticksStr = ticksFloat.ToString("F0", System.Globalization.CultureInfo.InvariantCulture);
+
+        var input = ticksStr + TrustedToken;
         var hash = SHA256.HashData(Encoding.ASCII.GetBytes(input));
         return Convert.ToHexString(hash);
     }
