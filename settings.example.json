@@ -1,0 +1,9 @@
+{
+  "userName": "сэр",
+  "wakeWords": [ "джарвис", "jarvis" ],
+  "conversationSeconds": 15,
+  "minimizeToTray": true,
+  "startWithWindows": false,
+  "openAiModel": "gpt-4.1-mini",
+  "voiceStyle": "jarvis"
+}

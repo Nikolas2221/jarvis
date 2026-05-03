@@ -7,6 +7,7 @@ namespace Jarvis;
 public sealed class GoogleTranslateTtsSynthesizer : ISpeechSynthesizer
 {
     private const int MaxTextLength = 180;
+    private readonly AppSettings _settings = AppSettings.Load();
 
     private static readonly HttpClient Http = new()
     {
@@ -32,7 +33,7 @@ public sealed class GoogleTranslateTtsSynthesizer : ISpeechSynthesizer
             foreach (var part in SplitText(text))
             {
                 var mp3 = SynthesizeAsync(part).GetAwaiter().GetResult();
-                PlayMp3(mp3);
+                PlayMp3(mp3, _settings.VoiceStyle);
             }
         }
         catch (Exception ex)
@@ -72,12 +73,19 @@ public sealed class GoogleTranslateTtsSynthesizer : ISpeechSynthesizer
         }
     }
 
-    private static void PlayMp3(byte[] mp3)
+    private static void PlayMp3(byte[] mp3, string voiceStyle)
     {
         using var ms = new MemoryStream(mp3);
         using var reader = new Mp3FileReader(ms);
         using var output = new WaveOutEvent();
-        output.Init(reader);
+        if (voiceStyle.Equals("jarvis", StringComparison.OrdinalIgnoreCase))
+        {
+            output.Init(new JarvisVoiceSampleProvider(reader.ToSampleProvider()));
+        }
+        else
+        {
+            output.Init(reader);
+        }
         output.Play();
         while (output.PlaybackState == PlaybackState.Playing)
         {
@@ -86,4 +94,48 @@ public sealed class GoogleTranslateTtsSynthesizer : ISpeechSynthesizer
     }
 
     public void Dispose() { }
+}
+
+internal sealed class JarvisVoiceSampleProvider : ISampleProvider
+{
+    private readonly ISampleProvider _source;
+    private readonly float[] _delay;
+    private int _delayIndex;
+    private double _phase;
+
+    public JarvisVoiceSampleProvider(ISampleProvider source)
+    {
+        _source = source;
+        WaveFormat = source.WaveFormat;
+        _delay = new float[Math.Max(1, WaveFormat.SampleRate / 28 * WaveFormat.Channels)];
+    }
+
+    public WaveFormat WaveFormat { get; }
+
+    public int Read(float[] buffer, int offset, int count)
+    {
+        var read = _source.Read(buffer, offset, count);
+        var channels = WaveFormat.Channels;
+
+        for (var i = 0; i < read; i++)
+        {
+            var sample = buffer[offset + i];
+            var metallic = 0.92f + 0.08f * (float)Math.Sin(_phase);
+            _phase += 2.0 * Math.PI * 42.0 / WaveFormat.SampleRate;
+            if (_phase > Math.PI * 2) _phase -= Math.PI * 2;
+
+            var echo = _delay[_delayIndex] * 0.18f;
+            var processed = Math.Clamp(sample * metallic + echo, -1f, 1f);
+            _delay[_delayIndex] = processed;
+            _delayIndex = (_delayIndex + 1) % _delay.Length;
+
+            // Keep stereo channels aligned by applying the same light digital character per sample.
+            if (channels > 0)
+            {
+                buffer[offset + i] = processed;
+            }
+        }
+
+        return read;
+    }
 }

@@ -25,5 +25,7 @@ storyboard_*.jpg
 tiktok_*.jpg
 
 update-settings.json
+settings.json
+apps.json
 release/
 publish/

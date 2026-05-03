@@ -6,5 +6,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>JarvisInstaller</AssemblyName>
+    <ApplicationIcon>..\Assets\Jarvis.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="..\Assets\Jarvis.ico" Link="Assets\Jarvis.ico" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

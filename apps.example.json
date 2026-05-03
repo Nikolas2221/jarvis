@@ -1,0 +1,9 @@
+{
+  "discord": "Discord.exe",
+  "telegram": "Telegram.exe",
+  "steam": "steam.exe",
+  "chrome": "chrome.exe",
+  "edge": "msedge.exe",
+  "code": "code.exe",
+  "vscode": "code.exe"
+}

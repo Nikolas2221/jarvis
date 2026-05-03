@@ -9,6 +9,7 @@ public sealed class CommandHandler
 {
     private readonly ISpeechSynthesizer _tts;
     private readonly OpenAiAssistant? _ai;
+    private readonly AppLauncher _launcher = new();
     private static readonly CultureInfo Ru = new("ru-RU");
 
     public CommandHandler(ISpeechSynthesizer tts, OpenAiAssistant? ai = null)
@@ -88,6 +89,11 @@ public sealed class CommandHandler
         }
 
         if (HandleLaunchCommand(t))
+        {
+            return true;
+        }
+
+        if (_launcher.TryLaunchFromCommand(t, _tts))
         {
             return true;
         }

@@ -6,9 +6,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
-    <UseWindowsForms>false</UseWindowsForms>
+    <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>Jarvis</RootNamespace>
     <AssemblyName>Jarvis</AssemblyName>
+    <ApplicationIcon>Assets\Jarvis.ico</ApplicationIcon>
     <Version>0.1.0</Version>
     <FileVersion>0.1.0.0</FileVersion>
     <AssemblyVersion>0.1.0.0</AssemblyVersion>
@@ -17,6 +18,12 @@
   <ItemGroup>
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="System.Speech" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\Jarvis.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="apps.example.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="settings.example.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

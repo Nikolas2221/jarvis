@@ -100,6 +100,18 @@
                     <TextBlock Text="ПРОТОКОЛ" Foreground="#64E6FF" FontSize="12"/>
                     <TextBlock x:Name="WakeText" Text="WAKE WORD: ДЖАРВИС" Foreground="#D7E9FF" Margin="0,10,0,0" TextWrapping="Wrap"/>
                     <TextBlock x:Name="UptimeText" Text="UPTIME: --" Foreground="{StaticResource SoftTextBrush}" Margin="0,8,0,0"/>
+                    <CheckBox x:Name="AutostartCheck"
+                              Content="Автозапуск Windows"
+                              Foreground="#D7E9FF"
+                              Margin="0,12,0,0"
+                              Checked="AutostartCheck_Changed"
+                              Unchecked="AutostartCheck_Changed"/>
+                    <CheckBox x:Name="TrayCheck"
+                              Content="Сворачивать в трей"
+                              Foreground="#D7E9FF"
+                              Margin="0,8,0,0"
+                              Checked="TrayCheck_Changed"
+                              Unchecked="TrayCheck_Changed"/>
                     <Separator Background="#2B3B5F" Margin="0,22"/>
                     <TextBlock Text="КОМАНДЫ" Foreground="#64E6FF" FontSize="12"/>
                     <TextBlock Foreground="{StaticResource SoftTextBrush}" Margin="0,10,0,0" TextWrapping="Wrap">

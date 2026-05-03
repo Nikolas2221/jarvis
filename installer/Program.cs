@@ -24,6 +24,7 @@ internal sealed class InstallerForm : Form
     private readonly TextBox _installPath = new();
     private readonly Button _browseButton = new();
     private readonly Button _installButton = new();
+    private readonly Button _uninstallButton = new();
     private readonly Button _closeButton = new();
     private readonly CheckBox _desktopShortcut = new();
     private readonly CheckBox _startMenuShortcut = new();
@@ -101,10 +102,16 @@ internal sealed class InstallerForm : Form
         _progress.Style = ProgressBarStyle.Blocks;
 
         _installButton.Text = "Установить";
-        _installButton.Left = 304;
+        _installButton.Left = 194;
         _installButton.Top = 282;
         _installButton.Width = 100;
         _installButton.Click += async (_, _) => await InstallAsync();
+
+        _uninstallButton.Text = "Удалить";
+        _uninstallButton.Left = 304;
+        _uninstallButton.Top = 282;
+        _uninstallButton.Width = 100;
+        _uninstallButton.Click += (_, _) => Uninstall();
 
         _closeButton.Text = "Закрыть";
         _closeButton.Left = 414;
@@ -123,6 +130,7 @@ internal sealed class InstallerForm : Form
             _status,
             _progress,
             _installButton,
+            _uninstallButton,
             _closeButton
         ]);
     }
@@ -138,7 +146,7 @@ internal sealed class InstallerForm : Form
 
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
-            _installPath.Text = dialog.SelectedPath;
+            _installPath.Text = EnsureJarvisFolder(dialog.SelectedPath);
         }
     }
 
@@ -146,7 +154,8 @@ internal sealed class InstallerForm : Form
     {
         if (_installing) return;
 
-        var installDir = _installPath.Text.Trim();
+        var installDir = EnsureJarvisFolder(_installPath.Text.Trim());
+        _installPath.Text = installDir;
         if (string.IsNullOrWhiteSpace(installDir))
         {
             MessageBox.Show("Выберите папку установки.", "Jarvis Setup", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -256,6 +265,7 @@ internal sealed class InstallerForm : Form
         _startMenuShortcut.Enabled = !installing;
         _launchAfterInstall.Enabled = !installing;
         _installButton.Enabled = !installing;
+        _uninstallButton.Enabled = !installing;
         _closeButton.Enabled = !installing;
     }
 
@@ -274,6 +284,86 @@ internal sealed class InstallerForm : Form
         var json = await Http.GetStringAsync(ManifestUrl);
         return JsonSerializer.Deserialize<UpdateManifest>(json, new JsonSerializerOptions(JsonSerializerDefaults.Web))
                ?? throw new InvalidOperationException("Не удалось прочитать update-manifest.json.");
+    }
+
+    private void Uninstall()
+    {
+        var installDir = EnsureJarvisFolder(_installPath.Text.Trim());
+        if (string.IsNullOrWhiteSpace(installDir))
+        {
+            MessageBox.Show("Выберите папку установки.", "Jarvis Setup", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        var exePath = Path.Combine(installDir, "Jarvis.exe");
+        if (!File.Exists(exePath))
+        {
+            MessageBox.Show("Jarvis.exe не найден в выбранной папке.", "Jarvis Setup", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        var confirm = MessageBox.Show(
+            $"Удалить Jarvis Alpha из папки?\n\n{installDir}",
+            "Jarvis Setup",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Warning);
+        if (confirm != DialogResult.Yes) return;
+
+        try
+        {
+            SetInstalling(true);
+            SetStatus("Останавливаю Jarvis...", marquee: true);
+            foreach (var process in Process.GetProcessesByName("Jarvis"))
+            {
+                try { process.Kill(entireProcessTree: true); }
+                catch { }
+            }
+
+            SetStatus("Удаляю ярлыки и автозапуск...", marquee: true);
+            DeleteIfExists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Jarvis Alpha.lnk"));
+            DeleteIfExists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "Jarvis Alpha.lnk"));
+            RemoveAutostart();
+
+            SetStatus("Удаляю файлы приложения...", marquee: true);
+            Directory.Delete(installDir, recursive: true);
+
+            SetStatus("Jarvis Alpha удалён.", marquee: false, value: 100);
+            MessageBox.Show("Jarvis Alpha удалён.", "Jarvis Setup", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        catch (Exception ex)
+        {
+            SetStatus("Ошибка удаления.", marquee: false, value: 0);
+            MessageBox.Show(ex.Message, "Jarvis Setup", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        finally
+        {
+            SetInstalling(false);
+        }
+    }
+
+    private static string EnsureJarvisFolder(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return path;
+        var trimmed = path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        return Path.GetFileName(trimmed).Equals("Jarvis", StringComparison.OrdinalIgnoreCase)
+            ? trimmed
+            : Path.Combine(trimmed, "Jarvis");
+    }
+
+    private static void DeleteIfExists(string path)
+    {
+        if (File.Exists(path))
+        {
+            File.Delete(path);
+        }
+    }
+
+    private static void RemoveAutostart()
+    {
+        using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+            @"Software\Microsoft\Windows\CurrentVersion\Run",
+            writable: true);
+        key?.DeleteValue("JarvisAlpha", throwOnMissingValue: false);
     }
 
     private static async Task DownloadFileAsync(string url, string path)

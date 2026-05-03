@@ -1,6 +1,7 @@
 using System.Text;
 using System.Windows;
 using System.Windows.Threading;
+using Forms = System.Windows.Forms;
 
 namespace Jarvis;
 
@@ -12,12 +13,21 @@ public partial class MainWindow : Window
     private MicrophoneRecorder? _recorder;
     private ISpeechSynthesizer? _tts;
     private Task? _worker;
+    private Forms.NotifyIcon? _trayIcon;
+    private AppSettings _settings = new();
+    private DateTime _conversationUntil;
     private bool _fullscreen;
+    private bool _forceExit;
 
     public MainWindow()
     {
         InitializeComponent();
         Console.OutputEncoding = Encoding.UTF8;
+        Icon = System.Windows.Media.Imaging.BitmapFrame.Create(new Uri("pack://application:,,,/Assets/Jarvis.ico"));
+        _settings = AppSettings.Load();
+        Environment.SetEnvironmentVariable("OPENAI_MODEL", _settings.OpenAiModel);
+        SetupTray();
+        ApplySettingsToUi();
 
         _clock.Tick += (_, _) =>
         {
@@ -27,7 +37,33 @@ public partial class MainWindow : Window
         _clock.Start();
 
         Loaded += (_, _) => StartJarvis();
-        Closing += (_, _) => StopJarvis();
+        Closing += MainWindow_Closing;
+    }
+
+    private void SetupTray()
+    {
+        _trayIcon = new Forms.NotifyIcon
+        {
+            Text = "Jarvis Alpha",
+            Icon = new System.Drawing.Icon(System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "Jarvis.ico")),
+            Visible = true,
+            ContextMenuStrip = new Forms.ContextMenuStrip()
+        };
+
+        _trayIcon.ContextMenuStrip.Items.Add("Открыть", null, (_, _) => ShowFromTray());
+        _trayIcon.ContextMenuStrip.Items.Add("Выход", null, (_, _) =>
+        {
+            _forceExit = true;
+            Close();
+        });
+        _trayIcon.DoubleClick += (_, _) => ShowFromTray();
+    }
+
+    private void ApplySettingsToUi()
+    {
+        AutostartCheck.IsChecked = StartupManager.IsEnabled();
+        TrayCheck.IsChecked = _settings.MinimizeToTray;
+        WakeText.Text = $"WAKE WORD: {string.Join(" / ", _settings.WakeWords).ToUpperInvariant()}";
     }
 
     private void StartJarvis()
@@ -107,7 +143,8 @@ public partial class MainWindow : Window
 
                 if (commandText.Length == 0)
                 {
-                    _tts.Speak("Слушаю, сэр.");
+                    _conversationUntil = DateTime.Now.AddSeconds(_settings.ConversationSeconds);
+                    _tts.Speak($"Слушаю, {_settings.UserName}.");
                     continue;
                 }
 
@@ -118,6 +155,7 @@ public partial class MainWindow : Window
                     Dispatcher.Invoke(Close);
                     break;
                 }
+                _conversationUntil = DateTime.Now.AddSeconds(_settings.ConversationSeconds);
             }
         }
         catch (OperationCanceledException)
@@ -141,6 +179,7 @@ public partial class MainWindow : Window
     {
         _cts?.Cancel();
         _recorder?.Stop();
+        _trayIcon?.Dispose();
     }
 
     private void AddUser(string text)
@@ -199,19 +238,24 @@ public partial class MainWindow : Window
         }
     }
 
-    private static string? ExtractCommand(string text)
+    private string? ExtractCommand(string text)
     {
         var normalized = text.Trim();
         var lower = normalized.ToLowerInvariant();
-        var wakeWords = new[] { "джарвис", "jarvis" };
 
-        foreach (var wake in wakeWords)
+        foreach (var wake in _settings.WakeWords)
         {
             var index = lower.IndexOf(wake, StringComparison.OrdinalIgnoreCase);
             if (index < 0) continue;
 
+            _conversationUntil = DateTime.Now.AddSeconds(_settings.ConversationSeconds);
             var command = normalized.Remove(index, wake.Length);
             return command.Trim(' ', ',', '.', '!', '?', ':', ';', '-');
+        }
+
+        if (DateTime.Now <= _conversationUntil)
+        {
+            return normalized;
         }
 
         if (lower.Contains("выход", StringComparison.OrdinalIgnoreCase) ||
@@ -224,6 +268,16 @@ public partial class MainWindow : Window
     }
 
     private void HideButton_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+
+    private void ShowFromTray()
+    {
+        Dispatcher.Invoke(() =>
+        {
+            Show();
+            WindowState = WindowState.Normal;
+            Activate();
+        });
+    }
 
     private void TopmostButton_Click(object sender, RoutedEventArgs e)
     {
@@ -257,12 +311,12 @@ public partial class MainWindow : Window
             {
                 if (interactive)
                 {
-                    MessageBox.Show(result.Message, "Jarvis Update", MessageBoxButton.OK, MessageBoxImage.Information);
+                    System.Windows.MessageBox.Show(result.Message, "Jarvis Update", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 return;
             }
 
-            var answer = MessageBox.Show(
+            var answer = System.Windows.MessageBox.Show(
                 $"{result.Message}\n\n{result.Manifest.Notes}\n\nУстановить обновление сейчас?",
                 "Jarvis Update",
                 MessageBoxButton.YesNo,
@@ -271,17 +325,52 @@ public partial class MainWindow : Window
             if (answer != MessageBoxResult.Yes) return;
 
             await updater.DownloadAndInstallAsync(result.Manifest, message => AddLog("UPDATE", message), CancellationToken.None);
-            Application.Current.Shutdown();
+            System.Windows.Application.Current.Shutdown();
         }
         catch (Exception ex)
         {
             AddLogCore("UPDATE", ex.Message);
             if (interactive)
             {
-                MessageBox.Show(ex.Message, "Jarvis Update", MessageBoxButton.OK, MessageBoxImage.Warning);
+                System.Windows.MessageBox.Show(ex.Message, "Jarvis Update", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
     }
 
-    private void StopButton_Click(object sender, RoutedEventArgs e) => Close();
+    private void AutostartCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!IsLoaded) return;
+        var enabled = AutostartCheck.IsChecked == true;
+        StartupManager.SetEnabled(enabled);
+        _settings.StartWithWindows = enabled;
+        _settings.Save();
+        AddLogCore("SETTINGS", enabled ? "Автозапуск включён." : "Автозапуск выключен.");
+    }
+
+    private void TrayCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!IsLoaded) return;
+        _settings.MinimizeToTray = TrayCheck.IsChecked == true;
+        _settings.Save();
+        AddLogCore("SETTINGS", _settings.MinimizeToTray ? "Сворачивание в трей включено." : "Сворачивание в трей выключено.");
+    }
+
+    private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (!_forceExit && _settings.MinimizeToTray)
+        {
+            e.Cancel = true;
+            Hide();
+            _trayIcon?.ShowBalloonTip(1200, "Jarvis Alpha", "Джарвис продолжает работать в трее.", Forms.ToolTipIcon.Info);
+            return;
+        }
+
+        StopJarvis();
+    }
+
+    private void StopButton_Click(object sender, RoutedEventArgs e)
+    {
+        _forceExit = true;
+        Close();
+    }
 }
