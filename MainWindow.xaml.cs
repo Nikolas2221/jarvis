@@ -295,7 +295,11 @@ public partial class MainWindow : Window
 
     private async void UpdateButton_Click(object sender, RoutedEventArgs e)
     {
-        await CheckUpdatesAsync(interactive: true);
+        var window = new UpdateWindow
+        {
+            Owner = this
+        };
+        window.ShowDialog();
     }
 
     private async Task CheckUpdatesAsync(bool interactive)
