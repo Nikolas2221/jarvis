@@ -24,6 +24,7 @@
     <Content Include="Assets\Jarvis.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="apps.example.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="settings.example.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="xtts\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

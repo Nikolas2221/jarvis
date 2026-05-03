@@ -13,6 +13,9 @@ obj/
 *.mov
 *.mkv
 *.webm
+xtts/speaker.wav
+xtts/.venv/
+xtts/models/
 
 youtube_page.html
 tiktok_page.html

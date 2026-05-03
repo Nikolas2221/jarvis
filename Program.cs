@@ -5,6 +5,18 @@ internal static class SpeechSynthesizerFactory
     public static ISpeechSynthesizer Create()
     {
         var settings = AppSettings.Load();
+        if (settings.VoiceProvider.Equals("xtts", StringComparison.OrdinalIgnoreCase) ||
+            settings.VoiceProvider.Equals("auto", StringComparison.OrdinalIgnoreCase))
+        {
+            var fallback = CreateBuiltIn(settings);
+            return new XttsSpeechSynthesizer(settings, fallback);
+        }
+
+        return CreateBuiltIn(settings);
+    }
+
+    private static ISpeechSynthesizer CreateBuiltIn(AppSettings settings)
+    {
         if (settings.VoiceStyle.Equals("jarvis", StringComparison.OrdinalIgnoreCase))
         {
             return new GoogleTranslateTtsSynthesizer();

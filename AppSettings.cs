@@ -17,6 +17,8 @@ public sealed class AppSettings
     public bool StartWithWindows { get; set; }
     public string OpenAiModel { get; set; } = "gpt-4.1-mini";
     public string VoiceStyle { get; set; } = "jarvis";
+    public string VoiceProvider { get; set; } = "auto";
+    public string XttsUrl { get; set; } = "http://127.0.0.1:8765";
 
     public static string Path => System.IO.Path.Combine(AppContext.BaseDirectory, "settings.json");
 

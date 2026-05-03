@@ -5,5 +5,7 @@
   "minimizeToTray": true,
   "startWithWindows": false,
   "openAiModel": "gpt-4.1-mini",
-  "voiceStyle": "jarvis"
+  "voiceStyle": "jarvis",
+  "voiceProvider": "auto",
+  "xttsUrl": "http://127.0.0.1:8765"
 }

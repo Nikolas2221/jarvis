@@ -1,0 +1,4 @@
+TTS==0.22.0
+soundfile==0.12.1
+flask==3.0.3
+torch
