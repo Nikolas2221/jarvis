@@ -1,0 +1,206 @@
+<Window x:Class="Jarvis.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Jarvis Alpha"
+        Width="1180"
+        Height="720"
+        MinWidth="980"
+        MinHeight="620"
+        Background="#050814"
+        WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <SolidColorBrush x:Key="PanelBrush" Color="#11182A"/>
+        <SolidColorBrush x:Key="LineBrush" Color="#425B8F"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#64E6FF"/>
+        <SolidColorBrush x:Key="SoftTextBrush" Color="#8EA7C7"/>
+        <DropShadowEffect x:Key="Glow" Color="#52D9FF" BlurRadius="22" ShadowDepth="0" Opacity="0.75"/>
+
+        <Style TargetType="Border" x:Key="HudPanel">
+            <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="16"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.Background>
+            <RadialGradientBrush Center="0.5,0.35" GradientOrigin="0.5,0.35" RadiusX="0.85" RadiusY="0.85">
+                <GradientStop Color="#162548" Offset="0"/>
+                <GradientStop Color="#080D1B" Offset="0.55"/>
+                <GradientStop Color="#02040B" Offset="1"/>
+            </RadialGradientBrush>
+        </Grid.Background>
+
+        <Grid Margin="22">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="72"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="132"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="260"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="300"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Row="0" Grid.ColumnSpan="3" BorderBrush="#526A9F" BorderThickness="0,0,0,1">
+                <Grid>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="JARVIS ALPHA" Foreground="#EAF8FF" FontSize="24" FontWeight="SemiBold"/>
+                        <TextBlock Text="VOICE CONTROL PROTOCOL" Foreground="{StaticResource SoftTextBrush}" FontSize="12"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <TextBlock x:Name="ClockText" Text="--:--" Foreground="#64E6FF" FontSize="30" FontWeight="SemiBold" Margin="0,0,22,0"/>
+                        <Button Content="Поверх"
+                                Width="82"
+                                Height="32"
+                                Click="TopmostButton_Click"
+                                Background="#182238"
+                                BorderBrush="#3B5A91"
+                                Foreground="#DDEEFF"
+                                Margin="0,0,8,0"/>
+                        <Button Content="Экран"
+                                Width="82"
+                                Height="32"
+                                Click="FullscreenButton_Click"
+                                Background="#182238"
+                                BorderBrush="#3B5A91"
+                                Foreground="#DDEEFF"
+                                Margin="0,0,8,0"/>
+                        <Button Content="Скрыть"
+                                Width="82"
+                                Height="32"
+                                Click="HideButton_Click"
+                                Background="#182238"
+                                BorderBrush="#3B5A91"
+                                Foreground="#DDEEFF"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource HudPanel}" Margin="0,20,18,18">
+                <StackPanel>
+                    <TextBlock Text="СИСТЕМА" Foreground="#64E6FF" FontSize="14" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="StatusText" Text="Инициализация" Foreground="#EAF8FF" FontSize="24" Margin="0,20,0,4"/>
+                    <TextBlock x:Name="BackendText" Text="Подключение модулей..." Foreground="{StaticResource SoftTextBrush}" TextWrapping="Wrap"/>
+                    <Separator Background="#2B3B5F" Margin="0,22"/>
+                    <TextBlock Text="АКТИВНЫЕ МОДУЛИ" Foreground="#64E6FF" FontSize="12"/>
+                    <TextBlock Text="MICROPHONE / ASR / TTS / COMMANDS" Foreground="#D7E9FF" Margin="0,10,0,0" TextWrapping="Wrap"/>
+                    <Separator Background="#2B3B5F" Margin="0,22"/>
+                    <TextBlock Text="ПРОТОКОЛ" Foreground="#64E6FF" FontSize="12"/>
+                    <TextBlock x:Name="WakeText" Text="WAKE WORD: ДЖАРВИС" Foreground="#D7E9FF" Margin="0,10,0,0" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="UptimeText" Text="UPTIME: --" Foreground="{StaticResource SoftTextBrush}" Margin="0,8,0,0"/>
+                    <Separator Background="#2B3B5F" Margin="0,22"/>
+                    <TextBlock Text="КОМАНДЫ" Foreground="#64E6FF" FontSize="12"/>
+                    <TextBlock Foreground="{StaticResource SoftTextBrush}" Margin="0,10,0,0" TextWrapping="Wrap">
+                        джарвис привет, время, дата, открой браузер, открой YouTube, найди, громче, тише, открой блокнот, таймер, блокировка
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <Grid Grid.Row="1" Grid.Column="1" Margin="0,20,18,18">
+                <Ellipse Width="360" Height="360" Stroke="#153A63" StrokeThickness="2" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Ellipse Width="292" Height="292" Stroke="#245A8B" StrokeThickness="1" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Ellipse x:Name="CoreRing"
+                         Width="226"
+                         Height="226"
+                         Stroke="#64E6FF"
+                         StrokeThickness="7"
+                         StrokeDashArray="20 11 4 11"
+                         Effect="{StaticResource Glow}"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center"
+                         RenderTransformOrigin="0.5,0.5">
+                    <Ellipse.RenderTransform>
+                        <RotateTransform x:Name="CoreRotation"/>
+                    </Ellipse.RenderTransform>
+                    <Ellipse.Triggers>
+                        <EventTrigger RoutedEvent="Loaded">
+                            <BeginStoryboard>
+                                <Storyboard RepeatBehavior="Forever">
+                                    <DoubleAnimation Storyboard.TargetName="CoreRotation"
+                                                     Storyboard.TargetProperty="Angle"
+                                                     From="0"
+                                                     To="360"
+                                                     Duration="0:0:8"/>
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                    </Ellipse.Triggers>
+                </Ellipse>
+                <TextBlock Text="PROTOCOL"
+                           Foreground="#EAF8FF"
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Margin="0,0,0,30"/>
+                <TextBlock Text="ALPHA"
+                           Foreground="#64E6FF"
+                           FontSize="24"
+                           FontWeight="SemiBold"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Margin="0,40,0,0"/>
+                <TextBlock x:Name="LastUserText"
+                           Text="Ожидаю голосовую команду"
+                           Foreground="#B8D9F6"
+                           FontSize="20"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap"
+                           MaxWidth="560"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Bottom"
+                           Margin="0,0,0,32"/>
+            </Grid>
+
+            <Border Grid.Row="1" Grid.Column="2" Style="{StaticResource HudPanel}" Margin="0,20,0,18">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="ЖУРНАЛ" Foreground="#64E6FF" FontSize="14" FontWeight="SemiBold"/>
+                    <ListBox x:Name="LogList"
+                             Grid.Row="1"
+                             Margin="0,16,0,0"
+                             Background="#07101E"
+                             BorderThickness="0"
+                             Foreground="#DDEEFF"
+                             FontFamily="Consolas"
+                             FontSize="12"/>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="2" Grid.ColumnSpan="3" Style="{StaticResource HudPanel}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="220"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="ОТВЕТ ДЖАРВИСА" Foreground="#64E6FF" FontSize="12"/>
+                        <TextBlock x:Name="LastAssistantText"
+                                   Text="Система готовится к запуску."
+                                   Foreground="#F2FBFF"
+                                   FontSize="24"
+                                   TextWrapping="Wrap"
+                                   Margin="0,14,0,0"/>
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Content="Остановить"
+                            Height="42"
+                            Width="150"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            Click="StopButton_Click"
+                            Background="#321927"
+                            BorderBrush="#A94D7A"
+                            Foreground="#FFEAF3"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>
