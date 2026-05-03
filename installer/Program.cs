@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
 using System.Text.Json;
@@ -7,61 +6,223 @@ using System.Windows.Forms;
 
 internal static class Program
 {
-    private const string ManifestUrl = "https://github.com/Nikolas2221/jarvis/releases/latest/download/update-manifest.json";
-    private const string ReleasesUrl = "https://github.com/Nikolas2221/jarvis/releases";
-    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(60) };
-
     [STAThread]
-    private static async Task Main()
+    private static void Main()
     {
         ApplicationConfiguration.Initialize();
+        Application.Run(new InstallerForm());
+    }
+}
 
+internal sealed class InstallerForm : Form
+{
+    private const string ManifestUrl = "https://github.com/Nikolas2221/jarvis/releases/latest/download/update-manifest.json";
+    private const string ReleasesUrl = "https://github.com/Nikolas2221/jarvis/releases";
+    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromMinutes(5) };
+
+    private readonly Label _status = new();
+    private readonly TextBox _installPath = new();
+    private readonly Button _browseButton = new();
+    private readonly Button _installButton = new();
+    private readonly Button _closeButton = new();
+    private readonly CheckBox _desktopShortcut = new();
+    private readonly CheckBox _startMenuShortcut = new();
+    private readonly CheckBox _launchAfterInstall = new();
+    private readonly ProgressBar _progress = new();
+    private bool _installing;
+
+    public InstallerForm()
+    {
+        Text = "Jarvis Alpha Setup";
+        Width = 560;
+        Height = 340;
+        StartPosition = FormStartPosition.CenterScreen;
+        FormBorderStyle = FormBorderStyle.FixedDialog;
+        MaximizeBox = false;
+        MinimizeBox = false;
+
+        var title = new Label
+        {
+            Text = "Установка Jarvis Alpha",
+            Left = 24,
+            Top = 22,
+            Width = 480,
+            Font = new Font(Font.FontFamily, 14, FontStyle.Bold)
+        };
+
+        var pathLabel = new Label
+        {
+            Text = "Папка установки:",
+            Left = 24,
+            Top = 70,
+            Width = 180
+        };
+
+        _installPath.Left = 24;
+        _installPath.Top = 94;
+        _installPath.Width = 390;
+        _installPath.Text = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Jarvis");
+
+        _browseButton.Text = "Обзор...";
+        _browseButton.Left = 424;
+        _browseButton.Top = 92;
+        _browseButton.Width = 90;
+        _browseButton.Click += BrowseButton_Click;
+
+        _desktopShortcut.Text = "Создать ярлык на рабочем столе";
+        _desktopShortcut.Left = 24;
+        _desktopShortcut.Top = 134;
+        _desktopShortcut.Width = 280;
+        _desktopShortcut.Checked = true;
+
+        _startMenuShortcut.Text = "Добавить в меню Пуск";
+        _startMenuShortcut.Left = 24;
+        _startMenuShortcut.Top = 162;
+        _startMenuShortcut.Width = 280;
+        _startMenuShortcut.Checked = true;
+
+        _launchAfterInstall.Text = "Запустить Jarvis после установки";
+        _launchAfterInstall.Left = 24;
+        _launchAfterInstall.Top = 190;
+        _launchAfterInstall.Width = 280;
+        _launchAfterInstall.Checked = true;
+
+        _status.Text = "Готов к установке.";
+        _status.Left = 24;
+        _status.Top = 224;
+        _status.Width = 490;
+
+        _progress.Left = 24;
+        _progress.Top = 248;
+        _progress.Width = 490;
+        _progress.Height = 20;
+        _progress.Style = ProgressBarStyle.Blocks;
+
+        _installButton.Text = "Установить";
+        _installButton.Left = 304;
+        _installButton.Top = 282;
+        _installButton.Width = 100;
+        _installButton.Click += async (_, _) => await InstallAsync();
+
+        _closeButton.Text = "Закрыть";
+        _closeButton.Left = 414;
+        _closeButton.Top = 282;
+        _closeButton.Width = 100;
+        _closeButton.Click += (_, _) => Close();
+
+        Controls.AddRange([
+            title,
+            pathLabel,
+            _installPath,
+            _browseButton,
+            _desktopShortcut,
+            _startMenuShortcut,
+            _launchAfterInstall,
+            _status,
+            _progress,
+            _installButton,
+            _closeButton
+        ]);
+    }
+
+    private void BrowseButton_Click(object? sender, EventArgs e)
+    {
+        using var dialog = new FolderBrowserDialog
+        {
+            Description = "Выберите папку установки Jarvis Alpha",
+            SelectedPath = _installPath.Text,
+            UseDescriptionForTitle = true
+        };
+
+        if (dialog.ShowDialog(this) == DialogResult.OK)
+        {
+            _installPath.Text = dialog.SelectedPath;
+        }
+    }
+
+    private async Task InstallAsync()
+    {
+        if (_installing) return;
+
+        var installDir = _installPath.Text.Trim();
+        if (string.IsNullOrWhiteSpace(installDir))
+        {
+            MessageBox.Show("Выберите папку установки.", "Jarvis Setup", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        SetInstalling(true);
         try
         {
-            var installDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Jarvis");
-
             Directory.CreateDirectory(installDir);
             var tempRoot = Path.Combine(Path.GetTempPath(), "JarvisInstaller", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(tempRoot);
 
+            SetStatus("Получаю manifest обновления...", marquee: true);
             var manifest = await DownloadManifestAsync();
+
             var zipPath = Path.Combine(tempRoot, "Jarvis.zip");
+            SetStatus($"Скачиваю Jarvis {manifest.Version}...", marquee: true);
             await DownloadFileAsync(manifest.PackageUrl, zipPath);
 
             var extractDir = Path.Combine(tempRoot, "app");
+            SetStatus("Распаковываю файлы...", marquee: true);
             ZipFile.ExtractToDirectory(zipPath, extractDir);
+
+            SetStatus("Копирую приложение...", marquee: true);
             CopyDirectory(extractDir, installDir);
 
             File.WriteAllText(
                 Path.Combine(installDir, "update-settings.json"),
                 JsonSerializer.Serialize(new { manifestUrl = ManifestUrl }, new JsonSerializerOptions { WriteIndented = true }));
 
-            CreateShortcut(
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Jarvis Alpha.lnk"),
-                Path.Combine(installDir, "Jarvis.exe"),
-                installDir);
-
-            MessageBox.Show("Jarvis Alpha установлен.", "Jarvis Installer", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            Process.Start(new ProcessStartInfo
+            var exePath = Path.Combine(installDir, "Jarvis.exe");
+            if (_desktopShortcut.Checked)
             {
-                FileName = Path.Combine(installDir, "Jarvis.exe"),
-                UseShellExecute = true
-            });
+                SetStatus("Создаю ярлык на рабочем столе...", marquee: true);
+                CreateShortcut(
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Jarvis Alpha.lnk"),
+                    exePath,
+                    installDir);
+            }
+
+            if (_startMenuShortcut.Checked)
+            {
+                SetStatus("Добавляю Jarvis в меню Пуск...", marquee: true);
+                CreateShortcut(
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "Jarvis Alpha.lnk"),
+                    exePath,
+                    installDir);
+            }
+
+            SetStatus("Установка завершена.", marquee: false, value: 100);
+            MessageBox.Show("Jarvis Alpha установлен.", "Jarvis Setup", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            if (_launchAfterInstall.Checked)
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = exePath,
+                    UseShellExecute = true
+                });
+            }
+
+            Close();
         }
         catch (Exception ex)
         {
+            SetStatus("Ошибка установки.", marquee: false, value: 0);
+            SetInstalling(false);
+
             var message = ex is HttpRequestException
-                ? "Не удалось скачать файлы установки с GitHub Releases.\n\n" +
-                  "Проверьте, что Release уже создан, workflow GitHub Actions завершился успешно, " +
-                  "и репозиторий/Release доступны публично. Для приватного репозитория GitHub отдаёт 404 без авторизации.\n\n" +
-                  $"Страница релизов:\n{ReleasesUrl}"
+                ? "Не удалось скачать файлы установки с GitHub Releases. Проверьте интернет и доступность релиза."
                 : ex.Message;
 
             var result = MessageBox.Show(
-                message + "\n\nОткрыть страницу релизов?",
-                "Jarvis Installer",
+                $"{message}\n\nОткрыть страницу релизов?",
+                "Jarvis Setup",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Error);
 
@@ -73,6 +234,38 @@ internal static class Program
                     UseShellExecute = true
                 });
             }
+        }
+    }
+
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        if (_installing)
+        {
+            e.Cancel = true;
+        }
+
+        base.OnFormClosing(e);
+    }
+
+    private void SetInstalling(bool installing)
+    {
+        _installing = installing;
+        _installPath.Enabled = !installing;
+        _browseButton.Enabled = !installing;
+        _desktopShortcut.Enabled = !installing;
+        _startMenuShortcut.Enabled = !installing;
+        _launchAfterInstall.Enabled = !installing;
+        _installButton.Enabled = !installing;
+        _closeButton.Enabled = !installing;
+    }
+
+    private void SetStatus(string text, bool marquee, int value = 0)
+    {
+        _status.Text = text;
+        _progress.Style = marquee ? ProgressBarStyle.Marquee : ProgressBarStyle.Blocks;
+        if (!marquee)
+        {
+            _progress.Value = Math.Clamp(value, 0, 100);
         }
     }
 
