@@ -8,6 +8,7 @@ using System.Windows.Forms;
 internal static class Program
 {
     private const string ManifestUrl = "https://github.com/Nikolas2221/jarvis/releases/latest/download/update-manifest.json";
+    private const string ReleasesUrl = "https://github.com/Nikolas2221/jarvis/releases";
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(60) };
 
     [STAThread]
@@ -51,7 +52,27 @@ internal static class Program
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, "Jarvis Installer", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            var message = ex is HttpRequestException
+                ? "Не удалось скачать файлы установки с GitHub Releases.\n\n" +
+                  "Проверьте, что Release уже создан, workflow GitHub Actions завершился успешно, " +
+                  "и репозиторий/Release доступны публично. Для приватного репозитория GitHub отдаёт 404 без авторизации.\n\n" +
+                  $"Страница релизов:\n{ReleasesUrl}"
+                : ex.Message;
+
+            var result = MessageBox.Show(
+                message + "\n\nОткрыть страницу релизов?",
+                "Jarvis Installer",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Error);
+
+            if (result == DialogResult.Yes)
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = ReleasesUrl,
+                    UseShellExecute = true
+                });
+            }
         }
     }
 

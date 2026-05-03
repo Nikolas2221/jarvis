@@ -1,6 +1,7 @@
 name: Release
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - "v*"
@@ -24,9 +25,15 @@ jobs:
       - name: Resolve version
         shell: pwsh
         run: |
-          $version = "${env:GITHUB_REF_NAME}".TrimStart("v")
+          if ("${env:GITHUB_REF_TYPE}" -eq "tag") {
+            $version = "${env:GITHUB_REF_NAME}".TrimStart("v")
+            $tag = "${env:GITHUB_REF_NAME}"
+          } else {
+            $version = "0.1.1"
+            $tag = "v0.1.1"
+          }
           "VERSION=$version" >> $env:GITHUB_ENV
-          "TAG=${env:GITHUB_REF_NAME}" >> $env:GITHUB_ENV
+          "TAG=$tag" >> $env:GITHUB_ENV
 
       - name: Publish Jarvis
         shell: pwsh
@@ -37,8 +44,8 @@ jobs:
             --configfile NuGet.Config `
             --self-contained true `
             -p:Version=$env:VERSION `
-            -p:AssemblyVersion="$env:VERSION.0" `
-            -p:FileVersion="$env:VERSION.0" `
+            -p:AssemblyVersion="$env:VERSION" `
+            -p:FileVersion="$env:VERSION" `
             -o release/Jarvis
 
       - name: Add update settings
