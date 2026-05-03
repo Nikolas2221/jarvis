@@ -29,10 +29,10 @@ public sealed class AppUpdater
         var latest = Version.Parse(manifest.Version);
         if (latest <= current)
         {
-            return UpdateCheckResult.UpToDate(current.ToString(), manifest.Version);
+            return UpdateCheckResult.UpToDate(ToDisplayVersion(current), manifest.Version);
         }
 
-        return UpdateCheckResult.Available(current.ToString(), manifest);
+        return UpdateCheckResult.Available(ToDisplayVersion(current), manifest);
     }
 
     public async Task DownloadAndInstallAsync(UpdateManifest manifest, Action<UpdateProgress> progress, CancellationToken ct)
@@ -103,6 +103,9 @@ public sealed class AppUpdater
 
         Start-Process -FilePath '{{exePath}}'
         """;
+
+    private static string ToDisplayVersion(Version version) =>
+        version.Build > 0 ? version.ToString(3) : version.ToString();
 }
 
 public sealed record UpdateManifest(

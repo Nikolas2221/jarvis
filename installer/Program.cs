@@ -181,7 +181,7 @@ internal sealed class InstallerForm : Form
             var installedVersion = GetInstalledVersion(Path.Combine(installDir, "Jarvis.exe"));
             _version.Text = $"Установлена: {installedVersion}; доступна: {manifest.Version}";
 
-            if (installedVersion == manifest.Version)
+            if (IsInstalledVersionCurrent(installedVersion, manifest.Version))
             {
                 var reinstall = MessageBox.Show(
                     "Установлена актуальная версия. Переустановить Jarvis Alpha?",
@@ -317,7 +317,23 @@ internal sealed class InstallerForm : Form
         var info = FileVersionInfo.GetVersionInfo(exePath);
         return string.IsNullOrWhiteSpace(info.ProductVersion)
             ? "неизвестно"
-            : info.ProductVersion;
+            : NormalizeVersionText(info.ProductVersion);
+    }
+
+    private static bool IsInstalledVersionCurrent(string installed, string latest)
+    {
+        if (!Version.TryParse(installed, out var installedVersion)) return false;
+        if (!Version.TryParse(latest, out var latestVersion)) return false;
+        return installedVersion >= latestVersion;
+    }
+
+    private static string NormalizeVersionText(string version)
+    {
+        var plusIndex = version.IndexOf('+');
+        if (plusIndex >= 0) version = version[..plusIndex];
+        return Version.TryParse(version, out var parsed) && parsed.Build == 0
+            ? parsed.ToString(3)
+            : version;
     }
 
     private void Uninstall()
