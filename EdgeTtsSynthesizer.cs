@@ -28,11 +28,17 @@ public sealed class EdgeTtsSynthesizer : ISpeechSynthesizer
         try
         {
             var mp3 = SynthesizeAsync(text).GetAwaiter().GetResult();
-            if (mp3.Length > 0) PlayMp3(mp3);
+            if (mp3.Length == 0)
+            {
+                TtsLog.Write("EdgeTTS", "Получено 0 байт MP3 — отдаю наверх ошибку для fallback.");
+                throw new InvalidOperationException("Edge TTS вернул пустой аудио-поток.");
+            }
+            PlayMp3(mp3);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not InvalidOperationException)
         {
-            Console.WriteLine($"[Edge TTS] Ошибка: {ex.Message}");
+            TtsLog.Write("EdgeTTS", $"{ex.GetType().Name}: {ex.Message}");
+            throw;
         }
         finally
         {

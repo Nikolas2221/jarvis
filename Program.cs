@@ -19,9 +19,12 @@ internal static class SpeechSynthesizerFactory
     {
         if (settings.VoiceStyle.Equals("jarvis", StringComparison.OrdinalIgnoreCase))
         {
-            // Нейронный мужской русский голос Microsoft Edge (Dmitry Neural) —
-            // звучит близко к актёрской озвучке, никаких локальных серверов не нужно.
-            return new EdgeTtsSynthesizer();
+            // Цепочка: Edge (нейронный Dmitry) → Google Translate (всегда работает)
+            // → Windows TTS (если стоит русский голос) → как последняя инстанция всё равно Google.
+            return new FallbackSpeechSynthesizer(
+                ("EdgeTTS", () => new EdgeTtsSynthesizer()),
+                ("GoogleTranslateTTS", () => new GoogleTranslateTtsSynthesizer()),
+                ("WindowsTTS", MakeWindowsTtsOrThrow));
         }
 
         try
@@ -39,6 +42,19 @@ internal static class SpeechSynthesizerFactory
             Console.WriteLine($"[TTS] Windows TTS недоступен: {ex.Message}");
         }
 
-        return new EdgeTtsSynthesizer();
+        return new FallbackSpeechSynthesizer(
+            ("EdgeTTS", () => new EdgeTtsSynthesizer()),
+            ("GoogleTranslateTTS", () => new GoogleTranslateTtsSynthesizer()));
+    }
+
+    private static ISpeechSynthesizer MakeWindowsTtsOrThrow()
+    {
+        var w = new WindowsSpeechSynthesizer();
+        if (!w.HasRussianVoice)
+        {
+            w.Dispose();
+            throw new InvalidOperationException("Windows TTS: русский голос не установлен.");
+        }
+        return w;
     }
 }

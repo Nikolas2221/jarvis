@@ -33,12 +33,17 @@ public sealed class GoogleTranslateTtsSynthesizer : ISpeechSynthesizer
             foreach (var part in SplitText(text))
             {
                 var mp3 = SynthesizeAsync(part).GetAwaiter().GetResult();
+                if (mp3.Length == 0)
+                {
+                    throw new InvalidOperationException("Google Translate TTS вернул пустой MP3.");
+                }
                 PlayMp3(mp3, _settings.VoiceStyle);
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[Online TTS] Ошибка: {ex.Message}");
+            TtsLog.Write("GoogleTranslate", $"{ex.GetType().Name}: {ex.Message}");
+            throw;
         }
         finally
         {
