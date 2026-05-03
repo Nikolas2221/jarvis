@@ -10,18 +10,20 @@
     <RootNamespace>Jarvis</RootNamespace>
     <AssemblyName>Jarvis</AssemblyName>
     <ApplicationIcon>Assets\Jarvis.ico</ApplicationIcon>
-    <Version>0.1.7</Version>
-    <FileVersion>0.1.7.0</FileVersion>
-    <AssemblyVersion>0.1.7.0</AssemblyVersion>
+    <Version>0.1.10</Version>
+    <FileVersion>0.1.10.0</FileVersion>
+    <AssemblyVersion>0.1.10.0</AssemblyVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="System.Speech" Version="9.0.0" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.20.1" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="Assets\Jarvis.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\silero_vad.onnx" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="apps.example.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="settings.example.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="xtts\**\*" CopyToOutputDirectory="PreserveNewest" />
